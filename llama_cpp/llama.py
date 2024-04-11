@@ -24,6 +24,7 @@ from pathlib import Path
 
 
 from llama_cpp.llama_types import List
+from llama_cpp._calibrator import Calibrator
 
 from .llama_types import *
 from .llama_grammar import LlamaGrammar
@@ -110,6 +111,8 @@ class Llama:
         type_v: Optional[int] = None,
         # Misc
         verbose: bool = True,
+        # Calibration Params
+        calibrator: Optional[Calibrator] = None,
         # Extra Params
         **kwargs,  # type: ignore
     ):
@@ -177,6 +180,7 @@ class Llama:
             verbose: Print verbose output to stderr.
             type_k: KV cache data type for K (default: f16)
             type_v: KV cache data type for V (default: f16)
+            calibrator: Optional calibrator in .joblib format to use for calibration.
 
         Raises:
             ValueError: If the model path does not exist.
@@ -435,6 +439,8 @@ class Llama:
             if self.verbose:
                 print(f"Using fallback chat format: {chat_format}", file=sys.stderr)
 
+        self.calibrator = calibrator
+
     @property
     def ctx(self) -> llama_cpp.llama_context_p:
         assert self._ctx.ctx is not None
@@ -608,6 +614,7 @@ class Llama:
             mirostat_tau=mirostat_tau,
             mirostat_eta=mirostat_eta,
             penalize_nl=penalize_nl,
+            calibrator=self.calibrator
         )
         sampling_context = _LlamaSamplingContext(
             params=sampling_params,

@@ -17,6 +17,8 @@ from .llama_types import *
 from .llama_grammar import LlamaGrammar
 
 import llama_cpp.llama_cpp as llama_cpp
+from llama_cpp._calibrator import Calibrator
+from llama_cpp._sampling import softmax
 
 
 # Python wrappers over llama.h structs
@@ -670,6 +672,7 @@ class _LlamaSamplingParams:
 
     logit_bias: dict[int, float] = field(default_factory=dict)
 
+    calibrator: Optional[Calibrator] = None
 
 @dataclass
 class _LlamaSamplingContext:
@@ -703,6 +706,27 @@ class _LlamaSamplingContext:
 
     def prev_str(self, ctx_main: _LlamaContext, n: int) -> str:
         return ctx_main.model.detokenize(self.prev[-n:]).decode("utf-8")
+    
+    def sample_calibrated(
+        self,
+        token_data_array: _LlamaTokenDataArray,
+    ) -> int:
+        # NOTE: token_data_array.candidates_data["logit"] has three arrays. We take the first one
+        # (token_data_array.candidates_data["logit"][0]) because it is the only one that is used 
+        # in the sampling methods.
+        # NOTE: the logits are already sorted in descending order
+        logits = token_data_array.candidates_data["logit"][0][:self.params.top_k]
+        ids = token_data_array.candidates_data["id"][0][:self.params.top_k]
+        probs = softmax(logits)
+
+        calibrator = self.params.calibrator
+        if calibrator is not None:
+            if calibrator.is_isotonic_regressor():
+                probs = calibrator(probs)
+
+        # Sample from the probabilities
+        id = np.random.choice(ids, p=probs)
+        return id
 
     def sample(
         self, ctx_main: _LlamaContext, idx: int = 0, logits_array: Optional[npt.NDArray[np.single]] = None
@@ -727,6 +751,7 @@ class _LlamaSamplingContext:
         token_data_array.copy_logits(logits_array)
 
         # apply penalties
+        # NOTE: The probabilities are calibrated without the penalties at the moment
         if len(self.prev) > 0:
             nl_token = ctx_main.model.token_nl()
             nl_logit = logits_array[nl_token]
@@ -774,9 +799,21 @@ class _LlamaSamplingContext:
                 )
             else:
                 min_keep = max(1, self.params.n_probs)
+
+                # Chooses the top k tokens with the highest logits
                 ctx_main.sample_top_k(
                     token_data_array, self.params.top_k, min_keep=min_keep
                 )
+
+                # The following sampling methods are not used in the current implementation
+                # because they change the logits and calculate the probabilities again.
+                # Therefore, calibration applied directly on the probabilities before
+                # these sampling methods is not effective. Calibration applied after these
+                # sampling methods is not effective either because these methods change the
+                # original distribution.
+                #
+                # Later, calibration support can be added for these methods as well.
+                """
                 ctx_main.sample_tail_free(
                     token_data_array, self.params.tfs_z, min_keep=min_keep
                 )
@@ -789,8 +826,12 @@ class _LlamaSamplingContext:
                 ctx_main.sample_min_p(
                     token_data_array, self.params.min_p, min_keep=min_keep
                 )
-                ctx_main.sample_temp(token_data_array, self.params.temp)
-                id = ctx_main.sample_token(token_data_array)
+                """
+
+                # Divides the logits by the temperature
+                #ctx_main.sample_temp(token_data_array, self.params.temp)
+                
+                id = self.sample_calibrated(token_data_array)
         return id
 
     def accept(self, ctx_main: _LlamaContext, id: int, apply_grammar: bool):
