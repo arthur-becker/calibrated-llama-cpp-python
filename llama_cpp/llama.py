@@ -440,6 +440,7 @@ class Llama:
                 print(f"Using fallback chat format: {chat_format}", file=sys.stderr)
 
         self.calibrator = calibrator
+        print(f"Calibrating model with calibrator: {calibrator is not None}", file=sys.stderr)
 
     @property
     def ctx(self) -> llama_cpp.llama_context_p:

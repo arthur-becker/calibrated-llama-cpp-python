@@ -7,6 +7,7 @@ from typing import Dict, Optional, Union, List
 import llama_cpp
 import llama_cpp.llama_speculative as llama_speculative
 import llama_cpp.llama_tokenizer as llama_tokenizer
+from llama_cpp._calibrator import Calibrator
 
 from llama_cpp.server.settings import ModelSettings
 
@@ -126,6 +127,7 @@ class LlamaProxy:
         kwargs = {}
 
         if settings.hf_model_repo_id is not None:
+            raise NotImplementedError("HF model repo not supported by calibrated-llama-cpp")
             create_fn = functools.partial(
                 llama_cpp.Llama.from_pretrained,
                 repo_id=settings.hf_model_repo_id,
@@ -134,6 +136,8 @@ class LlamaProxy:
         else:
             create_fn = llama_cpp.Llama
             kwargs["model_path"] = settings.model
+            if settings.calibrator_path is not None:
+                kwargs["calibrator"] = Calibrator(settings.calibrator_path)
 
         _model = create_fn(
             **kwargs,

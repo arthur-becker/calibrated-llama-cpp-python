@@ -172,6 +172,11 @@ class ModelSettings(BaseSettings):
     verbose: bool = Field(
         default=True, description="Whether to print debug information."
     )
+    # Calibrator
+    calibrator_path: Optional[str] = Field(
+        default=None,
+        description="Path to a calibrator in .joblib format to use for post-processing logits."
+    )
 
 
 class ServerSettings(BaseSettings):
