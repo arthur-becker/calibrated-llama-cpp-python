@@ -10,7 +10,6 @@ class Calibrator:
 
     def __call__(self, X) -> Any:
         if self.is_isotonic_regressor():
-            print("Calibrator is isotonic regressor\n\n\n\n")
             calibrated = self._calibrator.transform(X)
             return self._normalize(calibrated)
         else:
