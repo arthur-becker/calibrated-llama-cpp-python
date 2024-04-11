@@ -771,15 +771,23 @@ class _LlamaSamplingContext:
                 token_data_array.candidates_data["logit"][nl_token] = nl_logit
 
         if self.grammar is not None:
+            raise NotImplementedError("Calibrated llama-cpp-python does not support grammar")
+        
             ctx_main.sample_grammar(token_data_array, self.grammar)
 
         if self.params.temp < 0:
+            raise NotImplementedError("Calibrated llama-cpp-python does not support negative temperature.")
+
             ctx_main.sample_softmax(token_data_array)
             id = token_data_array.candidates_data["id"][0]
         elif self.params.temp == 0:
+            raise NotImplementedError("Calibrated llama-cpp-python does not support temperature == 0")
+
             id = ctx_main.sample_token_greedy(token_data_array)
         else:
             if self.params.mirostat == 1:
+                raise NotImplementedError("mirostat == 1 is not supported")
+
                 mirostat_m = 100
                 ctx_main.sample_temp(token_data_array, self.params.temp)
                 id = ctx_main.sample_token_mirostat(
@@ -790,6 +798,8 @@ class _LlamaSamplingContext:
                     ctypes.pointer(self.mirostat_mu),
                 )
             elif self.params.mirostat == 2:
+                raise NotImplementedError("mirostat == 2 is not supported")
+
                 ctx_main.sample_temp(token_data_array, self.params.temp)
                 id = ctx_main.sample_token_mirostat_v2(
                     token_data_array,
