@@ -811,6 +811,9 @@ class _LlamaSamplingContext:
                 min_keep = max(1, self.params.n_probs)
 
                 # Chooses the top k tokens with the highest logits
+                # NOTE: top_k=40 is a standard value that is often used. Also, 
+                # llama_cpp_python implements it as a default value
+                assert self.params.top_k == 40, "The top_k parameter must be 40 in the current implementation to ensure reproducibility."
                 ctx_main.sample_top_k(
                     token_data_array, self.params.top_k, min_keep=min_keep
                 )
