@@ -1,6 +1,7 @@
 from typing import Any
 import joblib
-from sklearn.isotonic import IsotonicRegression, LogisticRegression
+from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
 import numpy as np
 
 class Calibrator:
